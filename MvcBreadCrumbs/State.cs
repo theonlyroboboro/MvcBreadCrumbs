@@ -1,9 +1,10 @@
+using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.Mvc.Filters;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Reflection;
-using System.Web.Mvc;
 
 namespace MvcBreadCrumbs
 {
@@ -26,7 +27,7 @@ namespace MvcBreadCrumbs
 
 		public void Push(ActionExecutingContext context, string label, Type resourceType)
 		{
-			Add(context.HttpContext.Request.Url.LocalPath.ToString(), label, resourceType, context);
+			Add(context.HttpContext.Request.GetDisplayUrl(), label, resourceType, context);
 		}
 
 		public void SetCurrentLabel(string label)

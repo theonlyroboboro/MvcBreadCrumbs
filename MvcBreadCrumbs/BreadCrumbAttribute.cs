@@ -1,5 +1,5 @@
+using Microsoft.AspNetCore.Mvc.Filters;
 using System;
-using System.Web.Mvc;
 
 namespace MvcBreadCrumbs
 {
@@ -7,7 +7,6 @@ namespace MvcBreadCrumbs
 	[AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = false)]
 	public class BreadCrumbAttribute : ActionFilterAttribute
 	{
-
 		public bool Clear { get; set; }
 
 		public string Label { get; set; }
@@ -20,43 +19,22 @@ namespace MvcBreadCrumbs
 		/// but still allows other actions to use the attribute at the controller level.
 		/// </summary>
 		public bool Manual { get; set; }
-
-		private static IProvideBreadCrumbsSession _SessionProvider { get; set; }
-
-		private static IProvideBreadCrumbsSession SessionProvider
-		{
-			get
-			{
-				if (_SessionProvider != null)
-				{
-					return _SessionProvider;
-				}
-				return new HttpSessionProvider();
-			}
-		}
-
+				
 		public override void OnActionExecuting(ActionExecutingContext filterContext)
-		{
-
-			if (filterContext.IsChildAction)
-				return;
-
-			if (filterContext.HttpContext.Request.HttpMethod != "GET")
+		{			
+			if (filterContext.HttpContext.Request.Method  != "GET")
 				return;
 
 			if (Clear)
 			{
-				StateManager.RemoveState(SessionProvider.SessionId);
+				StateManager.RemoveState(filterContext.HttpContext.Session.Id);
 			}
 
 			if (Manual)
 				return;
 
-			var state = StateManager.GetState(SessionProvider.SessionId);
+			var state = StateManager.GetState(filterContext.HttpContext.Session.Id);
 			state.Push(filterContext, Label, ResourceType);
-
 		}
-
 	}
-
 }

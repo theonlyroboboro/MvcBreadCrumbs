@@ -1,28 +1,12 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
 using System.Text;
-using System.Web.Mvc;
 
 namespace MvcBreadCrumbs
 {
 	public class BreadCrumb
 	{
-		private static IProvideBreadCrumbsSession _sessionProvider { get; set; }
-
-		private static IProvideBreadCrumbsSession SessionProvider
-		{
-			get
-			{
-				if (_sessionProvider != null)
-				{
-					return _sessionProvider;
-				}
-				return new HttpSessionProvider();
-			}
-		}
-
 		private static IHierarchyProvider _hierarchyProvider { get; set; }
 
 		internal static IHierarchyProvider HierarchyProvider
@@ -36,40 +20,39 @@ namespace MvcBreadCrumbs
 			}
 		}
 
-
-		public static void Add(string url, string label)
+		public static void Add(string url, string label, string sessionId)
 		{
-			var state = StateManager.GetState(SessionProvider.SessionId);
+			var state = StateManager.GetState(sessionId);
 			state.Push(url, label);
 		}
 
-		public static void SetLabel(string label)
+		public static void SetLabel(string label, string sessionId)
 		{
-			var state = StateManager.GetState(SessionProvider.SessionId);
+			var state = StateManager.GetState(sessionId);
 			state.SetCurrentLabel(label);
 		}
 
-		public static void Clear()
+		public static void Clear(string sessionId)
 		{
-			StateManager.RemoveState(SessionProvider.SessionId);
+			StateManager.RemoveState(sessionId);
 		}
 
 		/// <summary>
 		/// Get the currently active URL from the BreadCrumb
 		/// </summary>
 		/// <returns>The currently active URL from the BreadCrumb</returns>
-		public static string GetCurrentUrl()
+		public static string GetCurrentUrl(string sessionId)
 		{
-			return StateManager.GetState(SessionProvider.SessionId).Current.Url;
+			return StateManager.GetState(sessionId).Current.Url;
 		}
 
 		/// <summary>
 		/// Get the URL of the preceeding item from the BreadCrumb
 		/// </summary>
 		/// <returns>The URL of the preceeding item in the breadcrumb</returns>
-		public static string GetPreviousUrl()
+		public static string GetPreviousUrl(string sessionId)
 		{
-			var previousPage = StateManager.GetState(SessionProvider.SessionId).Crumbs;
+			var previousPage = StateManager.GetState(sessionId).Crumbs;
 			var updatedList = new SortedSet<StateEntry>(previousPage, new StateEntryComparer());
 			updatedList.Reverse();
 
@@ -83,18 +66,18 @@ namespace MvcBreadCrumbs
 		/// Get the full list of URL currently in the breadcrumb. Index 0 being the farthest page.
 		/// </summary>
 		/// <returns>The full list of URL currently in the breadcrumb</returns>
-		public static IEnumerable<string> GetOrderedUrls()
+		public static IEnumerable<string> GetOrderedUrls(string sessionId)
 		{
-			return StateManager.GetState(SessionProvider.SessionId).Crumbs.Select(s => s.Url);
+			return StateManager.GetState(sessionId).Crumbs.Select(s => s.Url);
 		}
 
 		/// <summary>
 		/// Redirects
 		/// </summary>
 		/// <returns></returns>
-		public static RedirectResult RedirectToPreviousUrl()
+		public static RedirectResult RedirectToPreviousUrl(string sessionId)
 		{
-			var previousPage = StateManager.GetState(SessionProvider.SessionId).Crumbs;
+			var previousPage = StateManager.GetState(sessionId).Crumbs;
 			var updatedList = new SortedSet<StateEntry>(previousPage, new StateEntryComparer());
 			updatedList.Reverse();
 
@@ -111,15 +94,15 @@ namespace MvcBreadCrumbs
 		/// Get the full list of <see cref="RedirectResult"/> currently in the breadcrumb. Index 0 being the farthest page.
 		/// </summary>
 		/// <returns>The full list of <see cref="RedirectResult"/> currently in the breadcrumb</returns>
-		public static IEnumerable<RedirectResult> GetOrderedRedirections()
+		public static IEnumerable<RedirectResult> GetOrderedRedirections(string sessionId)
 		{
-			return StateManager.GetState(SessionProvider.SessionId).Crumbs.Select(s => new RedirectResult(s.Url));
+			return StateManager.GetState(sessionId).Crumbs.Select(s => new RedirectResult(s.Url));
 		}
 
-		public static string Display(string cssClassOverride = "breadcrumb")
+		public static string Display(string currentUrl, string sessionId, string cssClassOverride = "breadcrumb")
 		{
 
-			var state = StateManager.GetState(SessionProvider.SessionId);
+			var state = StateManager.GetState(sessionId);
 
 			if (state.Crumbs != null && !state.Crumbs.Any())
 				return "<!-- BreadCrumbs stack is empty -->";
@@ -128,7 +111,7 @@ namespace MvcBreadCrumbs
 			sb.Append("<ol class=\"");
 			sb.Append(cssClassOverride);
 			sb.Append("\">");
-			state.Crumbs.Select(x => new { Entry = x, IsCurrent = IsCurrentPage(x.Key) }).OrderBy(x => x.IsCurrent).ToList().ForEach(x =>
+			state.Crumbs.Select(x => new { Entry = x, IsCurrent = IsCurrentPage(x.Key, currentUrl) }).OrderBy(x => x.IsCurrent).ToList().ForEach(x =>
 			{
 				string label = string.IsNullOrWhiteSpace(x.Entry.Label) ? x.Entry.Action : x.Entry.Label;
 
@@ -145,10 +128,10 @@ namespace MvcBreadCrumbs
 			return sb.ToString();
 
 		}
-		public static string DisplayRaw()
+		public static string DisplayRaw(string sessionId)
 		{
 
-			var state = StateManager.GetState(SessionProvider.SessionId);
+			var state = StateManager.GetState(sessionId);
 
 			if (state.Crumbs != null && !state.Crumbs.Any())
 				return "<!-- BreadCrumbs stack is empty -->";
@@ -161,17 +144,13 @@ namespace MvcBreadCrumbs
 
 		}
 
-		private static bool IsCurrentPage(int compareKey)
+		private static bool IsCurrentPage(int compareKey,string currentUrl)
 		{
-			var key =
-				System.Web.HttpContext.Current.Request.Url
-				.LocalPath
+			var key = currentUrl
 				.ToLowerInvariant()
 				.GetHashCode();
 
 			return key == compareKey;
 		}
-
 	}
-
 }
